@@ -7,7 +7,7 @@ pipeline {
     stages {
         stage('Cloning Git') {
             steps {
-                checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/venkytatapudi/myPythonDockerRepo.git']]])     
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/venkytatapudi/myPythonDockerRepo.git']]])     
             }
         }
   
@@ -26,8 +26,8 @@ pipeline {
     stage('Pushing to ECR') {
      steps{  
          script {
-                sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin acct_id.dkr.ecr.us-east-1.amazonaws.com'
-                sh 'docker push acct_id.dkr.ecr.us-east-1.amazonaws.com/your_ecr_repo:latest'
+                sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 284257319655.dkr.ecr.us-east-1.amazonaws.com'
+                sh 'docker push 284257319655.dkr.ecr.us-east-1.amazonaws.com/your subbu-ecr-1:latest'
          }
         }
       }
@@ -43,7 +43,7 @@ pipeline {
     stage('Docker Run') {
      steps{
          script {
-                sh 'docker run -d -p 8096:5000 --rm --name mypythonContainer acct_id.dkr.ecr.us-east-1.amazonaws.com/your_ecr_repo:latest'
+                sh 'docker run -d -p 8096:5000 --rm --name mypythonContainer acct_id.dkr.ecr.us-east-1.amazonaws.com/your subbu-ecr-1:latest'
             }
       }
     }
