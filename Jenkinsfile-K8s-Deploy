@@ -1,65 +1,51 @@
 pipeline {
     agent any
-        environment {
-        //once you sign up for Docker hub, use that user_id here
-        registry = "ananthkannan/mypython-app-may20"
-        //- update your credentials ID after creating credentials for connecting to Docker Hub
-        registryCredential = 'dockerhub'
-        dockerImage = ''
+    environment {
+        registry = "284257319655.dkr.ecr.us-east-1.amazonaws.com/subbu-ecr-1"
     }
+   
     stages {
-
-        stage ('checkout') {
+        stage('Cloning Git') {
             steps {
-            checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/akannan1087/myPythonDockerRepo']]])
+                checkout([$class: 'GitSCM', branches: [[name: '*/main']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: '', url: 'https://github.com/venkytatapudi/myPythonDockerRepo.git']]])     
             }
         }
-       
-        stage ('Build docker image') {
-            steps {
-                script {
-                dockerImage = docker.build registry + ":$BUILD_NUMBER"
-                //dockerImage = docker.build registry + ":$BUILD_NUMBER"
-
-                }
-            }
-        }
-       
-         // Uploading Docker images into Docker Hub
-    stage('Upload Image') {
-     steps{   
-         script {
-            docker.withRegistry( '', registryCredential ) {
-            dockerImage.push()
-            }
-        }
-      }
-    }
-
-    stage('Remove Unused docker image') {
+  
+    // Building Docker images
+    stage('Building image') {
       steps{
-        sh "docker rmi $registry:$BUILD_NUMBER"
+        script {
+          dockerImage = docker.build registry
+        }
       }
     }
    
-    stage ('K8S Deploy') {
-        steps {
-            script {
-                kubernetesDeploy(
-                    configs: 'k8s-deployment.yaml',
-                    kubeconfigId: 'K8S',
-                    enableConfigSubstitution: true
-                    )           
-               
-            }
-        }
-    }
-  
-    }  
-}
+    // Uploading Docker images into AWS ECR
 
-always {
-  // remove built docker image and prune system
-  print 'Cleaning up the Docker system.'
-  sh 'docker system prune -f'
+ 
+    stage('Pushing to ECR') {
+     steps{  
+         script {
+                sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin acct_id.dkr.ecr.us-east-1.amazonaws.com'
+                sh 'docker push acct_id.dkr.ecr.us-east-1.amazonaws.com/your_ecr_repo:latest'
+         }
+        }
+      }
+   
+         // Stopping Docker containers for cleaner Docker run
+     stage('stop previous containers') {
+         steps {
+            sh 'docker ps -f name=mypythonContainer -q | xargs --no-run-if-empty docker container stop'
+            sh 'docker container ls -a -fname=mypythonContainer -q | xargs -r docker container rm'
+         }
+       }
+      
+    stage('Docker Run') {
+     steps{
+         script {
+                sh 'docker run -d -p 8096:5000 --rm --name mypythonContainer acct_id.dkr.ecr.us-east-1.amazonaws.com/your_ecr_repo:latest'
+            }
+      }
+    }
+    }
 }
